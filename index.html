@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>מרכז הפניות</title>
+<meta name="description" content="ממשק משותף בין סוכן הביטוח ליועצי המשכנתאות: שליחת לקוחות, מעקב סטטוס וניהול יתרות עמלה לפי הסכם אישי לכל יועץ.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&family=Assistant:wght@400;500;600;700&family=Roboto+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#f6f4ef;
+    --surface:#ffffff;
+    --surface-2:#f0eee7;
+    --border:#e2ddd1;
+    --text:#20231f;
+    --text-dim:#63685f;
+    --accent:#0e6f63;
+    --accent-ink:#ffffff;
+    --accent-weak:#e2f1ee;
+    --good:#1c8a4c;
+    --good-weak:#e5f6ea;
+    --warn:#a9740f;
+    --warn-weak:#faf0dc;
+    --bad:#bd3a3a;
+    --bad-weak:#fbe9e9;
+    --pill-bg:#edeae1;
+    --shadow: 0 1px 2px rgba(20,20,10,.04), 0 4px 16px rgba(20,20,10,.05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181a; --surface:#1b2023; --surface-2:#20262a; --border:#2c3336;
+      --text:#eef2ef; --text-dim:#98a29c; --accent:#3bbfad; --accent-ink:#04211d;
+      --accent-weak:#173330; --good:#49c17c; --good-weak:#153726; --warn:#e0a83f;
+      --warn-weak:#3a2f14; --bad:#ec7070; --bad-weak:#3a1d1d; --pill-bg:#242a2d;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181a; --surface:#1b2023; --surface-2:#20262a; --border:#2c3336;
+    --text:#eef2ef; --text-dim:#98a29c; --accent:#3bbfad; --accent-ink:#04211d;
+    --accent-weak:#173330; --good:#49c17c; --good-weak:#153726; --warn:#e0a83f;
+    --warn-weak:#3a2f14; --bad:#ec7070; --bad-weak:#3a1d1d; --pill-bg:#242a2d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    direction: rtl;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Assistant","Rubik","Segoe UI",Arial,sans-serif;
+    padding-inline: 16px;
+    padding-block: 18px;
+    margin:0;
+  }
+  h1,h2,h3{ font-family:"Rubik","Assistant",sans-serif; text-wrap:balance; margin:0; }
+  .num{ font-variant-numeric: tabular-nums; font-family:"Roboto Mono", "Assistant", monospace; }
+  a{ color: var(--accent); }
+  button{ font: inherit; }
+
+  .wrap{ max-width: 980px; margin: 0 auto; display:flex; flex-direction:column; gap:16px; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .mark{
+    width:34px; height:34px; border-radius:9px; background:var(--accent); color:var(--accent-ink);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; flex:none;
+  }
+  .brand-name{ font-weight:700; font-size:16px; }
+  .brand-sub{ font-size:12px; color:var(--text-dim); }
+
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border);
+    border-radius:999px; padding:6px 12px; font-size:13px; box-shadow: var(--shadow);
+  }
+  .chip .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .chip.link-btn{ cursor:pointer; }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; box-shadow: var(--shadow); }
+  .grid{ display:grid; gap:14px; }
+  .grid.cols-2{ grid-template-columns: 1fr 1fr; }
+  .grid.cols-3{ grid-template-columns: repeat(3,1fr); }
+  @media (max-width:720px){ .grid.cols-2, .grid.cols-3{ grid-template-columns: 1fr; } }
+
+  .stat{ display:flex; flex-direction:column; gap:4px; }
+  .stat .label{ font-size:12.5px; color:var(--text-dim); }
+  .stat .value{ font-size:26px; font-weight:700; }
+  .stat .value.small{ font-size:19px; }
+
+  .tabs{ display:flex; gap:6px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .tab{ padding:9px 14px; border-radius:10px 10px 0 0; font-size:14px; color:var(--text-dim); cursor:pointer; border:1px solid transparent; border-bottom:none; background:transparent; }
+  .tab.active{ color:var(--text); background:var(--surface); border-color:var(--border); font-weight:600; }
+
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th{ text-align:right; font-size:12px; color:var(--text-dim); font-weight:600; padding:8px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  td{ padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  tr:last-child td{ border-bottom:none; }
+  .tbl-wrap{ overflow-x:auto; }
+  .row-empty{ color:var(--text-dim); font-size:13.5px; padding:18px 4px; text-align:center; }
+
+  .pill{ display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:12.5px; font-weight:600; background:var(--pill-bg); color:var(--text-dim); white-space:nowrap; }
+  .pill.st-new{ background:var(--pill-bg); color:var(--text-dim); }
+  .pill.st-contacted{ background:var(--accent-weak); color:var(--accent); }
+  .pill.st-progress{ background:var(--warn-weak); color:var(--warn); }
+  .pill.st-pending{ background:var(--warn-weak); color:var(--warn); }
+  .pill.st-won{ background:var(--good-weak); color:var(--good); }
+  .pill.st-lost{ background:var(--bad-weak); color:var(--bad); }
+
+  label{ font-size:13px; color:var(--text-dim); display:block; margin-bottom:4px; }
+  input[type=text], input[type=tel], input[type=number], input[type=password], input[type=email], select, textarea{
+    width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:9px;
+    padding:9px 10px; font-size:14px; color:var(--text); font-family:inherit;
+  }
+  textarea{ resize:vertical; min-height:60px; }
+  .field{ margin-bottom:12px; }
+  .field-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .field-row > .field{ flex:1; min-width:150px; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); padding:9px 15px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .btn.ghost{ background:transparent; }
+  .btn.small{ padding:6px 10px; font-size:12.5px; }
+  .btn:disabled{ opacity:.5; cursor:default; }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  .section-title{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .muted{ color:var(--text-dim); font-size:13px; }
+
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(10,12,10,.45); display:flex; align-items:flex-start; justify-content:center; padding: 40px 16px; overflow-y:auto; z-index:50; }
+  .modal{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; width:100%; max-width:460px; box-shadow:var(--shadow); }
+  [hidden]{ display:none !important; }
+
+  .advisor-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 4px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .advisor-row:last-child{ border-bottom:none; }
+  .advisor-name{ font-weight:600; }
+  .advisor-meta{ font-size:12.5px; color:var(--text-dim); }
+  .code-tag{ font-family:"Roboto Mono",monospace; background:var(--accent-weak); color:var(--accent); border-radius:6px; padding:2px 7px; font-size:12.5px; letter-spacing:1px; }
+
+  .banner{ background:var(--warn-weak); color:var(--warn); border:1px solid var(--warn); border-radius:10px; padding:12px 14px; font-size:13.5px; }
+  .banner.info{ background:var(--accent-weak); color:var(--accent); border-color:var(--accent); }
+  .banner.bad{ background:var(--bad-weak); color:var(--bad); border-color:var(--bad); }
+
+  .lead-note{ font-size:12.5px; color:var(--text-dim); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ledger-amount.pos{ color:var(--good); }
+  .ledger-amount.neg{ color:var(--bad); }
+
+  .gate-wrap{ max-width:380px; margin:60px auto 0; text-align:center; }
+  .gate-wrap .mark-lg{ width:56px; height:56px; border-radius:14px; background:var(--accent); color:var(--accent-ink); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:22px; margin:0 auto 16px; }
+  .code-input{ text-align:center; letter-spacing:4px; font-family:"Roboto Mono",monospace; font-size:20px; text-transform:uppercase; }
+  .spinner{ display:inline-block; width:14px; height:14px; border-radius:50%; border:2px solid var(--border); border-top-color:var(--accent); animation:spin .7s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">מ</div>
+      <div>
+        <div class="brand-name">מרכז הפניות</div>
+        <div class="brand-sub">סוכן ביטוח ⋄ יועצי משכנתאות</div>
+      </div>
+    </div>
+    <div class="chip" id="whoami"><span class="dot"></span><span>טוען…</span></div>
+  </div>
+  <div id="content"><div class="card"><div class="muted">טוען…</div></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Supabase config ----------
+  var SUPABASE_URL = "https://omkcsxevtzuaeuzzrjky.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_q95js-bcXc_05X_xV5_1tQ_OhQIjXix";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ---------- constants ----------
+  var STATUSES = [
+    { id:"new",       label:"חדש",                 cls:"st-new" },
+    { id:"contacted", label:"נוצר קשר",             cls:"st-contacted" },
+    { id:"progress",  label:"בטיפול / הצעת מחיר",   cls:"st-progress" },
+    { id:"pending",   label:"ממתין לחתימה",         cls:"st-pending" },
+    { id:"won",       label:"נסגר בהצלחה",          cls:"st-won" },
+    { id:"lost",      label:"לא רלוונטי / ירד",     cls:"st-lost" }
+  ];
+  var STATUS_MAP = {}; STATUSES.forEach(function(s){ STATUS_MAP[s.id]=s; });
+  var TERMINAL = { won:true, lost:true };
+  var DEAL_TYPES = [
+    { id:"life", label:"ביטוח חיים" },
+    { id:"home", label:"ביטוח דירה" },
+    { id:"general", label:"סידור תיק כללי" }
+  ];
+
+  function fmtMoney(n){
+    n = Number(n)||0; var neg = n<0; n = Math.abs(n);
+    return (neg?"-":"") + "₪" + n.toLocaleString("he-IL",{maximumFractionDigits:0});
+  }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
+  function fmtDate(iso){ if(!iso) return ""; try{ return new Date(iso).toLocaleDateString("he-IL",{day:"2-digit",month:"2-digit",year:"2-digit"}); }catch(e){ return ""; } }
+  function todayIso(){ return new Date().toISOString(); }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+  function dealLabel(list){ return (list||[]).map(function(d){ var t=DEAL_TYPES.find(function(x){return x.id===d;}); return t?t.label:d; }).join(", "); }
+  function compressImageToBlob(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      var reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = function(){
+        img.onload = function(){
+          var w = img.naturalWidth, h = img.naturalHeight;
+          var scale = Math.min(1, maxDim / Math.max(w,h));
+          var cw = Math.max(1, Math.round(w*scale)), ch = Math.max(1, Math.round(h*scale));
+          var canvas = document.createElement("canvas");
+          canvas.width = cw; canvas.height = ch;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, cw, ch);
+          canvas.toBlob(function(blob){ blob?resolve(blob):reject(new Error("toBlob failed")); }, "image/jpeg", quality);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---------- app state ----------
+  var appData = { advisors:[], leads:[], ledger:[] }; // advisors keyed by array of {id,code,name,...}
+  var advisorsById = {};
+  var view = {
+    role: null,        // "owner" | "advisor" | "gate" | "loading"
+    myCode: null,
+    myAdvisor: null,   // advisor row for advisor session (from advisor_login)
+    activeTab: sessionStorage.getItem("mh_tab") || "leads",
+    modal: null,
+    saving: false,
+    toast: null,
+    gateError: null,
+    loginError: null
+  };
+
+  function balanceOf(advisorId){
+    var b=0; appData.ledger.forEach(function(e){ if(e.advisor_id===advisorId) b += Number(e.amount)||0; });
+    return b;
+  }
+  function leadCountOf(advisorId){ return appData.leads.filter(function(l){ return l.advisor_id===advisorId; }).length; }
+  function openLeadCountOf(advisorId){ return appData.leads.filter(function(l){ return l.advisor_id===advisorId && !TERMINAL[l.status]; }).length; }
+
+  // ================= RENDER =================
+  function render(){
+    var root = document.getElementById("content");
+    var who = document.getElementById("whoami");
+    if(!root || !who) return;
+
+    if(view.toast){
+      var t = view.toast; view.toast = null;
+      setTimeout(function(){ var tt=document.getElementById("mh-toast"); if(tt) tt.remove(); }, 5200);
+      root.insertAdjacentHTML("afterbegin", '<div class="banner bad" id="mh-toast" style="margin-bottom:12px">'+esc(t)+'</div>');
+    }
+
+    if(view.role === "owner"){
+      who.innerHTML = '<span class="dot"></span><span>מחובר כסוכן</span> <span class="chip link-btn" data-action="agent-logout" style="margin-inline-start:6px">יציאה</span>';
+      renderInto(root, renderAdmin());
+    } else if(view.role === "advisor"){
+      who.innerHTML = '<span class="dot"></span><span>שלום, '+esc(view.myAdvisor?view.myAdvisor.name:"יועץ")+'</span> <span class="chip link-btn" data-action="logout" style="margin-inline-start:6px">יציאה</span>';
+      renderInto(root, renderAdvisor());
+    } else if(view.role === "loading"){
+      who.innerHTML = '<span class="dot"></span><span>טוען…</span>';
+      renderInto(root, '<div class="card"><div class="muted">טוען…</div></div>');
+    } else {
+      who.innerHTML = '<span class="dot"></span><span>אזור אישי</span>';
+      renderInto(root, renderGate());
+    }
+    renderModal();
+  }
+  function renderInto(root, html){
+    var toast = document.getElementById("mh-toast");
+    root.innerHTML = (toast?toast.outerHTML:"") + html;
+    wireEvents();
+  }
+
+  // ================= GATE (advisor code OR agent login) =================
+  function renderGate(){
+    return '<div class="gate-wrap">' +
+      '<div class="mark-lg">מ</div>' +
+      '<h3 style="margin-bottom:6px">אזור אישי ליועץ</h3>' +
+      '<div class="muted" style="margin-bottom:18px">הזן את הקוד האישי שקיבלת מהסוכן</div>' +
+      '<form id="gate-form">' +
+        '<div class="field"><input class="code-input" type="text" maxlength="6" id="gate-code" placeholder="AB12CD" autocomplete="off"></div>' +
+        '<button class="btn primary" type="submit" style="width:100%">כניסה</button>' +
+      '</form>' +
+      (view.gateError ? '<div class="banner bad" style="margin-top:14px">'+esc(view.gateError)+'</div>' : '') +
+      '<div style="margin-top:28px;border-top:1px solid var(--border);padding-top:18px">' +
+        '<div class="muted" style="margin-bottom:10px">כניסת סוכן</div>' +
+        '<form id="agent-login-form">' +
+          '<div class="field"><input type="email" id="agent-email" placeholder="אימייל" autocomplete="username"></div>' +
+          '<div class="field"><input type="password" id="agent-password" placeholder="סיסמה" autocomplete="current-password"></div>' +
+          '<button class="btn" type="submit" style="width:100%">כניסת סוכן</button>' +
+        '</form>' +
+        (view.loginError ? '<div class="banner bad" style="margin-top:14px">'+esc(view.loginError)+'</div>' : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  // ================= ADMIN =================
+  function renderAdmin(){
+    var advisorsArr = appData.advisors.slice().sort(function(a,b){ return (a.name||"").localeCompare(b.name||"","he"); });
+    var totalOpen = appData.leads.filter(function(l){ return !TERMINAL[l.status]; }).length;
+    var totalWon = appData.leads.filter(function(l){ return l.status==="won"; }).length;
+    var totalOwed = advisorsArr.reduce(function(s,a){ return s+balanceOf(a.id); },0);
+
+    var html = '<div class="grid cols-3">' +
+      statCard("לידים פתוחים", totalOpen) +
+      statCard("נסגרו בהצלחה", totalWon) +
+      statCard('סה"כ חוב עמלות ליועצים', fmtMoney(totalOwed)) +
+    '</div>';
+
+    html += '<div class="tabs" style="margin-top:16px">' + tabBtn("leads","לידים") + tabBtn("advisors","יועצים") + tabBtn("ledger","יתרות ותשלומים") + '</div>';
+    html += '<div class="card" style="border-top-right-radius:0">';
+    if(view.activeTab==="leads") html += renderAdminLeads();
+    else if(view.activeTab==="advisors") html += renderAdminAdvisors(advisorsArr);
+    else html += renderAdminLedger(advisorsArr);
+    html += '</div>';
+    return html;
+  }
+  function statCard(label,value){ return '<div class="card stat"><div class="label">'+esc(label)+'</div><div class="value num small">'+(typeof value==="string"?value:esc(value))+'</div></div>'; }
+  function tabBtn(id,label){ return '<button class="tab '+(view.activeTab===id?"active":"")+'" data-tab="'+id+'">'+esc(label)+'</button>'; }
+
+  function renderAdminLeads(){
+    var html = '<div class="section-title"><h3>כל הלידים</h3><button class="btn primary small" data-action="new-lead" '+(view.saving?"disabled":"")+'>+ ליד חדש</button></div>';
+    if(appData.leads.length===0){ html += '<div class="row-empty">עדיין אין לידים במערכת.</div>'; return html; }
+    var sorted = appData.leads.slice().sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
+    html += '<div class="tbl-wrap"><table><thead><tr><th>לקוח</th><th>יועץ</th><th>סוג</th><th>סטטוס</th><th>עודכן</th><th>עמלה</th><th></th></tr></thead><tbody>';
+    sorted.forEach(function(l){
+      var adv = advisorsById[l.advisor_id];
+      var advName = adv ? adv.name : "ישיר / ללא יועץ";
+      var st = STATUS_MAP[l.status]||STATUS_MAP.new;
+      var commission = appData.ledger.find(function(e){ return e.linked_lead_id===l.id; });
+      html += '<tr>' +
+        '<td>'+esc(l.client_name)+(l.client_phone?'<div class="lead-note">'+esc(l.client_phone)+'</div>':'')+(l.id_photo_path?' <span class="pill st-contacted">ת.ז מצורפת</span>':'')+'</td>' +
+        '<td>'+esc(advName)+'</td>' +
+        '<td>'+esc(dealLabel(l.deal_types))+'</td>' +
+        '<td><span class="pill '+st.cls+'">'+st.label+'</span></td>' +
+        '<td class="muted">'+fmtDate(l.updated_at||l.created_at)+'</td>' +
+        '<td class="num">'+(commission?fmtMoney(commission.amount):"—")+'</td>' +
+        '<td><button class="btn small" data-action="edit-lead" data-id="'+l.id+'">פרטים</button></td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function renderAdminAdvisors(advisorsArr){
+    var html = '<div class="section-title"><h3>יועצי משכנתאות</h3><button class="btn primary small" data-action="new-advisor" '+(view.saving?"disabled":"")+'>+ הוספת יועץ</button></div>';
+    if(advisorsArr.length===0){ html += '<div class="row-empty">הוסף יועץ ותקבל עבורו קוד וקישור אישי לשליחה אליו.</div>'; return html; }
+    advisorsArr.forEach(function(a){
+      var agreementTxt = a.agreement_type==="percent" ? (a.agreement_value||0)+"% מהפרמיה" : a.agreement_type==="fixed" ? fmtMoney(a.agreement_value||0)+" לעסקה" : "טרם הוגדר הסכם";
+      var bal = balanceOf(a.id);
+      html += '<div class="advisor-row">' +
+        '<div>' +
+          '<div class="advisor-name">'+esc(a.name||"ללא שם")+' <span class="code-tag">'+a.code+'</span>'+(a.active===false?' <span class="pill st-progress">ממתין להסכם</span>':'')+'</div>' +
+          '<div class="advisor-meta">'+esc(a.phone||"")+(a.phone?" · ":"")+agreementTxt+' · '+leadCountOf(a.id)+' לידים ('+openLeadCountOf(a.id)+' פתוחים)</div>' +
+        '</div>' +
+        '<div class="btn-row">' +
+          '<div class="num" style="align-self:center; min-width:90px; text-align:left; font-weight:700">'+fmtMoney(bal)+'</div>' +
+          '<button class="btn small" data-action="copy-link" data-code="'+a.code+'">העתק קישור</button>' +
+          '<button class="btn small" data-action="edit-advisor" data-id="'+a.id+'">עריכה</button>' +
+        '</div>' +
+      '</div>';
+    });
+    return html;
+  }
+
+  function renderAdminLedger(advisorsArr){
+    var html = '<div class="section-title"><h3>יתרות ותנועות</h3><button class="btn primary small" data-action="new-ledger" '+(view.saving?"disabled":"")+'>+ תנועה ידנית</button></div>';
+    if(advisorsArr.length===0){ html += '<div class="row-empty">הוסף יועצים כדי לנהל יתרות.</div>'; return html; }
+    html += '<div class="grid cols-2" style="margin-bottom:16px">';
+    advisorsArr.forEach(function(a){ html += statCard(a.name||"ללא שם", fmtMoney(balanceOf(a.id))); });
+    html += '</div>';
+    var sorted = appData.ledger.slice().sort(function(a,b){ return (b.date||b.created_at||"").localeCompare(a.date||a.created_at||""); });
+    if(sorted.length===0){ html += '<div class="row-empty">עדיין אין תנועות.</div>'; return html; }
+    html += '<div class="tbl-wrap"><table><thead><tr><th>תאריך</th><th>יועץ</th><th>סוג</th><th>הערה</th><th>סכום</th></tr></thead><tbody>';
+    sorted.forEach(function(e){
+      var adv = advisorsById[e.advisor_id];
+      var typeLabel = e.type==="commission" ? "עמלה" : e.type==="payment" ? "תשלום ליועץ" : "התאמה";
+      html += '<tr><td class="muted">'+fmtDate(e.date||e.created_at)+'</td><td>'+esc(adv?adv.name:"—")+'</td><td>'+typeLabel+'</td>' +
+        '<td class="lead-note">'+esc(e.note||"")+'</td><td class="num ledger-amount '+(e.amount<0?"neg":"pos")+'">'+fmtMoney(e.amount)+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  // ================= ADVISOR =================
+  function renderAdvisor(){
+    var p = view.myAdvisor;
+    if(!p){ return renderGate(); }
+    var bal = balanceOf(p.id);
+    var myLeads = appData.leads.slice().sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
+    var myLedger = appData.ledger.slice().sort(function(a,b){ return (b.date||b.created_at||"").localeCompare(a.date||a.created_at||""); });
+    var agreementTxt = p.agreement_type==="percent" ? (p.agreement_value||0)+"% מהפרמיה השנתית בעסקה סגורה" : p.agreement_type==="fixed" ? fmtMoney(p.agreement_value||0)+" לכל עסקה שנסגרת" : null;
+
+    var html = "";
+    if(p.active===false) html += '<div class="banner" style="margin-bottom:14px">ההסכם מולך עדיין ממתין לאישור הסוכן — אפשר כבר לשלוח לקוחות.</div>';
+
+    html += '<div class="grid cols-2">' + statCard("יתרה לתשלום", fmtMoney(bal)) +
+      '<div class="card stat"><div class="label">הסכם עמלות</div><div class="value small">'+(agreementTxt?esc(agreementTxt):'<span class="muted">טרם הוגדר</span>')+'</div></div>' +
+    '</div>';
+
+    html += '<div class="card" style="margin-top:16px"><div class="section-title"><h3>הלקוחות שלי</h3><button class="btn primary small" data-action="new-lead-self" '+(view.saving?"disabled":"")+'>+ שליחת לקוח חדש</button></div>';
+    if(myLeads.length===0){ html += '<div class="row-empty">עוד לא שלחת לקוחות. לחץ על "שליחת לקוח חדש" כדי להתחיל.</div>'; }
+    else {
+      html += '<div class="tbl-wrap"><table><thead><tr><th>לקוח</th><th>סוג</th><th>סטטוס</th><th>עודכן</th></tr></thead><tbody>';
+      myLeads.forEach(function(l){
+        var st = STATUS_MAP[l.status]||STATUS_MAP.new;
+        html += '<tr><td>'+esc(l.client_name)+'</td><td>'+esc(dealLabel(l.deal_types))+'</td><td><span class="pill '+st.cls+'">'+st.label+'</span></td><td class="muted">'+fmtDate(l.updated_at||l.created_at)+'</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</div>';
+
+    html += '<div class="card" style="margin-top:16px"><h3 style="margin-bottom:12px">היסטוריית תנועות</h3>';
+    if(myLedger.length===0){ html += '<div class="row-empty">אין עדיין תנועות בקופה.</div>'; }
+    else {
+      html += '<div class="tbl-wrap"><table><thead><tr><th>תאריך</th><th>סוג</th><th>הערה</th><th>סכום</th></tr></thead><tbody>';
+      myLedger.forEach(function(e){
+        var typeLabel = e.type==="commission" ? "עמלה" : e.type==="payment" ? "תשלום שהתקבל" : "התאמה";
+        html += '<tr><td class="muted">'+fmtDate(e.date||e.created_at)+'</td><td>'+typeLabel+'</td><td class="lead-note">'+esc(e.note||"")+'</td><td class="num ledger-amount '+(e.amount<0?"neg":"pos")+'">'+fmtMoney(e.amount)+'</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // ================= MODALS =================
+  function renderModal(){
+    var host = document.getElementById("modal-host");
+    if(host) host.remove();
+    if(!view.modal) return;
+    var div = document.createElement("div");
+    div.id = "modal-host"; div.className = "modal-backdrop";
+    div.innerHTML = '<div class="modal">'+modalBody(view.modal)+'</div>';
+    div.addEventListener("mousedown", function(e){ if(e.target===div) closeModal(); });
+    document.body.appendChild(div);
+    wireModalEvents();
+  }
+  function closeModal(){ view.modal = null; render(); }
+
+  function modalBody(m){
+    if(m.type==="new-advisor" || m.type==="edit-advisor"){
+      var a = m.type==="edit-advisor" ? advisorsById[m.id] : {};
+      return '<h3 style="margin-bottom:14px">'+(m.type==="edit-advisor"?"עריכת יועץ":"הוספת יועץ")+'</h3>' +
+        '<form id="advisor-form">' +
+          '<div class="field"><label>שם</label><input required type="text" name="name" value="'+esc(a.name||"")+'"></div>' +
+          '<div class="field"><label>טלפון</label><input type="tel" name="phone" value="'+esc(a.phone||"")+'"></div>' +
+          '<div class="field-row">' +
+            '<div class="field"><label>סוג הסכם</label><select name="agreementType">' +
+              '<option value="percent" '+(a.agreement_type==="percent"?"selected":"")+'>אחוז מהפרמיה</option>' +
+              '<option value="fixed" '+(a.agreement_type==="fixed"?"selected":"")+'>סכום קבוע לעסקה</option>' +
+            '</select></div>' +
+            '<div class="field"><label id="agv-label">'+(a.agreement_type==="fixed"?"סכום (₪)":"אחוז (%)")+'</label><input type="number" step="0.5" name="agreementValue" value="'+esc(a.agreement_value!=null?a.agreement_value:"")+'"></div>' +
+          '</div>' +
+          '<div class="field"><label>הערות</label><textarea name="notes">'+esc(a.notes||"")+'</textarea></div>' +
+          (m.type==="edit-advisor" ? '<div class="field"><label><input type="checkbox" name="active" '+(a.active!==false?"checked":"")+' style="width:auto;display:inline;margin-left:6px"> ההסכם מאושר ופעיל</label></div>' : '') +
+          (m.type==="edit-advisor" ? '<div class="muted" style="margin-bottom:10px">קוד אישי: <span class="code-tag">'+a.code+'</span></div>' : '') +
+          '<div class="btn-row" style="margin-top:6px"><button class="btn primary" type="submit">שמירה</button><button class="btn ghost" type="button" data-action="close-modal">ביטול</button></div>' +
+        '</form>';
+    }
+    if(m.type==="new-lead" || m.type==="new-lead-self"){
+      var isSelf = m.type==="new-lead-self";
+      var advisorOptions = '<option value="">— ישיר / ללא יועץ —</option>';
+      appData.advisors.forEach(function(x){ advisorOptions += '<option value="'+x.id+'">'+esc(x.name||"ללא שם")+'</option>'; });
+      if(isSelf){
+        return '<h3 style="margin-bottom:14px">שליחת לקוח חדש</h3>' +
+          '<form id="lead-form">' +
+            '<div class="field"><label>שם הלקוח</label><input required type="text" name="clientName"></div>' +
+            '<div class="field"><label>טלפון הלקוח</label><input required type="tel" name="clientPhone"></div>' +
+            '<div class="field"><label>הערות (סכום המשכנתא, משועבד וכו\')</label><textarea name="note" placeholder="לדוגמה: משכנתא 800,000 ₪, משועבד לבנק X"></textarea></div>' +
+            '<div class="field"><label>צילום ת.ז. (רשות)</label><input type="file" accept="image/*" capture="environment" name="idPhoto" id="lead-id-photo"></div>' +
+            '<div class="btn-row" style="margin-top:6px"><button class="btn primary" type="submit">שליחה</button><button class="btn ghost" type="button" data-action="close-modal">ביטול</button></div>' +
+          '</form>';
+      }
+      return '<h3 style="margin-bottom:14px">הוספת ליד</h3>' +
+        '<form id="lead-form">' +
+          '<div class="field"><label>שם הלקוח</label><input required type="text" name="clientName"></div>' +
+          '<div class="field"><label>טלפון הלקוח</label><input type="tel" name="clientPhone"></div>' +
+          '<div class="field"><label>יועץ מפנה</label><select name="advisorId">'+advisorOptions+'</select></div>' +
+          '<div class="field"><label>סוג עסקה</label>' + DEAL_TYPES.map(function(t){ return '<label style="display:inline-flex;align-items:center;gap:5px;margin-inline-end:14px;font-size:14px;color:var(--text)"><input type="checkbox" name="dealTypes" value="'+t.id+'" style="width:auto"> '+t.label+'</label>'; }).join("") + '</div>' +
+          '<div class="field"><label>הערה</label><textarea name="note"></textarea></div>' +
+          '<div class="btn-row" style="margin-top:6px"><button class="btn primary" type="submit">שמירה</button><button class="btn ghost" type="button" data-action="close-modal">ביטול</button></div>' +
+        '</form>';
+    }
+    if(m.type==="edit-lead"){
+      var l = appData.leads.find(function(x){ return x.id===m.id; });
+      if(!l) return '<div class="muted">הליד לא נמצא.</div>';
+      var advisorOptions2 = '<option value="">— ישיר / ללא יועץ —</option>';
+      appData.advisors.forEach(function(x){ advisorOptions2 += '<option value="'+x.id+'" '+(l.advisor_id===x.id?"selected":"")+'>'+esc(x.name||"ללא שם")+'</option>'; });
+      var statusOptions = STATUSES.map(function(s){ return '<option value="'+s.id+'" '+(l.status===s.id?"selected":"")+'>'+s.label+'</option>'; }).join("");
+      return '<h3 style="margin-bottom:14px">'+esc(l.client_name)+'</h3>' +
+        (l.client_phone ? '<div class="muted" style="margin-bottom:10px">טלפון: '+esc(l.client_phone)+'</div>' : '') +
+        (l.id_photo_path ? '<div class="field"><label>צילום ת.ז. שצורף</label><button type="button" class="btn small" data-action="view-photo" data-path="'+esc(l.id_photo_path)+'">הצג תמונה</button></div>' : '') +
+        '<form id="lead-edit-form" data-id="'+l.id+'">' +
+          '<div class="field"><label>יועץ מפנה</label><select name="advisorId">'+advisorOptions2+'</select></div>' +
+          '<div class="field"><label>סטטוס</label><select name="status">'+statusOptions+'</select></div>' +
+          '<div class="field"><label>הערה פנימית</label><textarea name="note">'+esc(l.note||"")+'</textarea></div>' +
+          '<div class="field" id="premium-field" hidden><label>פרמיה שנתית לחישוב עמלה (₪)</label><input type="number" name="premium" step="1"></div>' +
+          '<div class="btn-row" style="margin-top:6px"><button class="btn primary" type="submit">עדכון</button><button class="btn ghost" type="button" data-action="close-modal">ביטול</button></div>' +
+        '</form>';
+    }
+    if(m.type==="new-ledger"){
+      var advisorOptions3 = "";
+      appData.advisors.forEach(function(x){ advisorOptions3 += '<option value="'+x.id+'">'+esc(x.name||"ללא שם")+'</option>'; });
+      return '<h3 style="margin-bottom:14px">תנועה ידנית בקופה</h3>' +
+        '<form id="ledger-form">' +
+          '<div class="field"><label>יועץ</label><select name="advisorId" required>'+advisorOptions3+'</select></div>' +
+          '<div class="field"><label>סוג תנועה</label><select name="type">' +
+            '<option value="payment">תשלום שבוצע ליועץ (מקטין את היתרה)</option>' +
+            '<option value="adjustment">התאמה ידנית (חיובי או שלילי)</option>' +
+          '</select></div>' +
+          '<div class="field"><label>סכום (₪)</label><input required type="number" step="1" name="amount"></div>' +
+          '<div class="field"><label>הערה</label><textarea name="note"></textarea></div>' +
+          '<div class="btn-row" style="margin-top:6px"><button class="btn primary" type="submit">שמירה</button><button class="btn ghost" type="button" data-action="close-modal">ביטול</button></div>' +
+        '</form>';
+    }
+    return "";
+  }
+
+  function wireModalEvents(){
+    var closeBtn = document.querySelector('[data-action="close-modal"]');
+    if(closeBtn) closeBtn.addEventListener("click", closeModal);
+
+    var viewPhotoBtn = document.querySelector('[data-action="view-photo"]');
+    if(viewPhotoBtn){
+      viewPhotoBtn.addEventListener("click", async function(){
+        var path = viewPhotoBtn.getAttribute("data-path");
+        viewPhotoBtn.disabled = true; viewPhotoBtn.textContent = "טוען…";
+        try{
+          var res = await sb.storage.from("id-photos").createSignedUrl(path, 300);
+          if(res.error) throw res.error;
+          window.open(res.data.signedUrl, "_blank");
+        }catch(e){ alert("שגיאה בטעינת התמונה: " + (e.message||e)); }
+        viewPhotoBtn.disabled = false; viewPhotoBtn.textContent = "הצג תמונה";
+      });
+    }
+
+    var advisorForm = document.getElementById("advisor-form");
+    if(advisorForm){
+      var sel = advisorForm.querySelector('select[name="agreementType"]');
+      var lbl = document.getElementById("agv-label");
+      sel.addEventListener("change", function(){ lbl.textContent = sel.value==="fixed" ? "סכום (₪)" : "אחוז (%)"; });
+      advisorForm.addEventListener("submit", async function(e){
+        e.preventDefault();
+        var fd = new FormData(advisorForm);
+        var data = { name: fd.get("name").trim(), phone: (fd.get("phone")||"").trim(), agreement_type: fd.get("agreementType"), agreement_value: Number(fd.get("agreementValue"))||0, notes:(fd.get("notes")||"").trim() };
+        view.saving = true; render();
+        try{
+          if(view.modal.type==="edit-advisor"){
+            data.active = !!fd.get("active");
+            data.updated_at = todayIso();
+            var upd = await sb.from("advisors").update(data).eq("id", view.modal.id);
+            if(upd.error) throw upd.error;
+          } else {
+            data.active = false;
+            data.code = genCodeClientSide();
+            var ins = await sb.from("advisors").insert(data);
+            if(ins.error) throw ins.error;
+          }
+          await loadAdminData();
+          view.saving = false; closeModal();
+        }catch(err){
+          view.saving = false; view.toast = "שגיאה בשמירת היועץ: " + (err.message||err); view.modal=null; render();
+        }
+      });
+    }
+
+    var leadForm = document.getElementById("lead-form");
+    if(leadForm){
+      leadForm.addEventListener("submit", async function(e){
+        e.preventDefault();
+        var submitBtn = leadForm.querySelector('button[type="submit"]');
+        var fd = new FormData(leadForm);
+        var isSelf = view.modal.type==="new-lead-self";
+        submitBtn.disabled = true;
+        try{
+          var photoInput = leadForm.querySelector('#lead-id-photo');
+          var file = photoInput && photoInput.files && photoInput.files[0];
+          var photoPath = null;
+          if(isSelf){
+            if(file){
+              submitBtn.textContent = "מעבד תמונה…";
+              var blob = await compressImageToBlob(file, 1400, 0.7);
+              photoPath = view.myCode + "/" + uid() + ".jpg";
+              submitBtn.textContent = "מעלה תמונה…";
+              var up = await sb.storage.from("id-photos").upload(photoPath, blob, { contentType:"image/jpeg" });
+              if(up.error) throw up.error;
+            }
+            submitBtn.textContent = "שולח…";
+            var rpc = await sb.rpc("advisor_submit_lead", {
+              p_code: view.myCode,
+              p_client_name: fd.get("clientName").trim(),
+              p_client_phone: (fd.get("clientPhone")||"").trim(),
+              p_note: (fd.get("note")||"").trim(),
+              p_id_photo_path: photoPath
+            });
+            if(rpc.error) throw rpc.error;
+            await loadAdvisorData();
+          } else {
+            var lead = {
+              client_name: fd.get("clientName").trim(),
+              client_phone: (fd.get("clientPhone")||"").trim(),
+              advisor_id: fd.get("advisorId")||null,
+              deal_types: fd.getAll("dealTypes"),
+              note: (fd.get("note")||"").trim(),
+              status: "new"
+            };
+            var ins2 = await sb.from("leads").insert(lead);
+            if(ins2.error) throw ins2.error;
+            await loadAdminData();
+          }
+          closeModal();
+        }catch(err){
+          view.toast = "שגיאה בשליחת הליד: " + (err.message||err);
+          view.modal = null; render();
+        }
+      });
+    }
+
+    var editForm = document.getElementById("lead-edit-form");
+    if(editForm){
+      var statusSel = editForm.querySelector('select[name="status"]');
+      var premiumField = document.getElementById("premium-field");
+      function syncPremium(){ premiumField.hidden = statusSel.value !== "won"; }
+      statusSel.addEventListener("change", syncPremium); syncPremium();
+      editForm.addEventListener("submit", async function(e){
+        e.preventDefault();
+        var fd = new FormData(editForm);
+        var leadId = editForm.getAttribute("data-id");
+        var lead = appData.leads.find(function(x){ return x.id===leadId; });
+        if(!lead){ closeModal(); return; }
+        var wasWon = lead.status==="won";
+        var newAdvisorId = fd.get("advisorId")||null;
+        var newStatus = fd.get("status");
+        try{
+          var upd = await sb.from("leads").update({
+            advisor_id: newAdvisorId,
+            status: newStatus,
+            note: (fd.get("note")||"").trim(),
+            updated_at: todayIso()
+          }).eq("id", leadId);
+          if(upd.error) throw upd.error;
+          if(newStatus==="won" && !wasWon && newAdvisorId){
+            var premium = Number(fd.get("premium"))||0;
+            var adv = advisorsById[newAdvisorId];
+            var amount = 0;
+            if(adv){
+              if(adv.agreement_type==="percent") amount = Math.round(premium*(Number(adv.agreement_value)||0)/100);
+              else if(adv.agreement_type==="fixed") amount = Number(adv.agreement_value)||0;
+            }
+            var insL = await sb.from("ledger").insert({
+              advisor_id: newAdvisorId, type:"commission", amount:amount,
+              note:"עמלה על סגירת ליד: "+lead.client_name+(dealLabel(lead.deal_types)?(" ("+dealLabel(lead.deal_types)+")"):""),
+              linked_lead_id: lead.id, date: todayIso()
+            });
+            if(insL.error) throw insL.error;
+          }
+          await loadAdminData();
+          closeModal();
+        }catch(err){
+          view.toast = "שגיאה בעדכון: " + (err.message||err); view.modal=null; render();
+        }
+      });
+    }
+
+    var ledgerForm = document.getElementById("ledger-form");
+    if(ledgerForm){
+      ledgerForm.addEventListener("submit", async function(e){
+        e.preventDefault();
+        var fd = new FormData(ledgerForm);
+        var type = fd.get("type");
+        var amount = Number(fd.get("amount"))||0;
+        if(type==="payment") amount = -Math.abs(amount);
+        try{
+          var ins = await sb.from("ledger").insert({
+            advisor_id: fd.get("advisorId"), type:type, amount:amount, note:(fd.get("note")||"").trim(), date: todayIso()
+          });
+          if(ins.error) throw ins.error;
+          await loadAdminData();
+          closeModal();
+        }catch(err){
+          view.toast = "שגיאה בשמירת התנועה: " + (err.message||err); view.modal=null; render();
+        }
+      });
+    }
+  }
+
+  function genCodeClientSide(){
+    var CODE_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    var s=""; for(var i=0;i<6;i++) s+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]; return s;
+  }
+
+  function wireEvents(){
+    document.querySelectorAll("[data-tab]").forEach(function(btn){ btn.addEventListener("click", function(){ view.activeTab = btn.getAttribute("data-tab"); sessionStorage.setItem("mh_tab", view.activeTab); render(); }); });
+    bind("new-lead", function(){ view.modal={type:"new-lead"}; render(); });
+    bind("new-lead-self", function(){ view.modal={type:"new-lead-self"}; render(); });
+    bind("new-advisor", function(){ view.modal={type:"new-advisor"}; render(); });
+    bind("new-ledger", function(){ view.modal={type:"new-ledger"}; render(); });
+    bind("logout", function(){ localStorage.removeItem("mh_code"); view.role=null; view.myCode=null; view.myAdvisor=null; render(); });
+    bind("agent-logout", async function(){ await sb.auth.signOut(); view.role=null; render(); });
+    document.querySelectorAll('[data-action="edit-advisor"]').forEach(function(btn){ btn.addEventListener("click", function(){ view.modal={type:"edit-advisor", id:btn.getAttribute("data-id")}; render(); }); });
+    document.querySelectorAll('[data-action="edit-lead"]').forEach(function(btn){ btn.addEventListener("click", function(){ view.modal={type:"edit-lead", id:btn.getAttribute("data-id")}; render(); }); });
+    document.querySelectorAll('[data-action="copy-link"]').forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var code = btn.getAttribute("data-code");
+        var url = location.origin + location.pathname + "#" + code;
+        function fallback(){
+          var ta = document.createElement("textarea"); ta.value=url; document.body.appendChild(ta); ta.select();
+          try{ document.execCommand("copy"); }catch(e){}
+          document.body.removeChild(ta);
+        }
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(url).catch(fallback);
+        } else fallback();
+        var old = btn.textContent; btn.textContent = "הועתק ✓"; setTimeout(function(){ btn.textContent = old; }, 1500);
+      });
+    });
+    var gateForm = document.getElementById("gate-form");
+    if(gateForm){
+      gateForm.addEventListener("submit", async function(e){
+        e.preventDefault();
+        var code = document.getElementById("gate-code").value.trim().toUpperCase();
+        if(!code){ return; }
+        try{
+          var res = await sb.rpc("advisor_login", { p_code: code });
+          if(res.error) throw res.error;
+          if(res.data && res.data.length){
+            view.myCode = code; view.myAdvisor = res.data[0]; view.role = "advisor"; view.gateError = null;
+            localStorage.setItem("mh_code", code);
+            render();
+            await loadAdvisorData();
+          } else {
+            view.gateError = "קוד לא נמצא. בדוק מול הסוכן.";
+            render();
+          }
+        }catch(err){
+          view.gateError = "שגיאה בבדיקת הקוד: " + (err.message||err);
+          render();
+        }
+      });
+    }
+    var agentForm = document.getElementById("agent-login-form");
+    if(agentForm){
+      agentForm.addEventListener("submit", async function(e){
+        e.preventDefault();
+        var email = document.getElementById("agent-email").value.trim();
+        var password = document.getElementById("agent-password").value;
+        try{
+          var res = await sb.auth.signInWithPassword({ email:email, password:password });
+          if(res.error) throw res.error;
+          view.role = "owner"; view.loginError = null;
+          render();
+          await loadAdminData();
+        }catch(err){
+          view.loginError = "כניסה נכשלה: " + (err.message||err);
+          render();
+        }
+      });
+    }
+  }
+  function bind(action, fn){ var el = document.querySelector('[data-action="'+action+'"]'); if(el) el.addEventListener("click", fn); }
+
+  // ================= DATA LOADERS =================
+  async function loadAdminData(){
+    try{
+      var advRes = await sb.from("advisors").select("*");
+      if(advRes.error) throw advRes.error;
+      var leadsRes = await sb.from("leads").select("*");
+      if(leadsRes.error) throw leadsRes.error;
+      var ledgerRes = await sb.from("ledger").select("*");
+      if(ledgerRes.error) throw ledgerRes.error;
+      appData.advisors = advRes.data || [];
+      appData.leads = leadsRes.data || [];
+      appData.ledger = ledgerRes.data || [];
+      advisorsById = {}; appData.advisors.forEach(function(a){ advisorsById[a.id]=a; });
+      render();
+    }catch(err){
+      view.toast = "שגיאה בטעינת נתונים: " + (err.message||err);
+      render();
+    }
+  }
+
+  async function loadAdvisorData(){
+    try{
+      var leadsRes = await sb.rpc("advisor_get_leads", { p_code: view.myCode });
+      if(leadsRes.error) throw leadsRes.error;
+      var ledgerRes = await sb.rpc("advisor_get_ledger", { p_code: view.myCode });
+      if(ledgerRes.error) throw ledgerRes.error;
+      appData.leads = leadsRes.data || [];
+      appData.ledger = ledgerRes.data || [];
+      appData.advisors = [view.myAdvisor];
+      advisorsById = {}; if(view.myAdvisor) advisorsById[view.myAdvisor.id] = view.myAdvisor;
+      render();
+    }catch(err){
+      view.toast = "שגיאה בטעינת נתונים: " + (err.message||err);
+      render();
+    }
+  }
+
+  // ================= BOOT =================
+  async function boot(){
+    view.role = "loading"; render();
+
+    var sessionRes = await sb.auth.getSession();
+    var session = sessionRes.data && sessionRes.data.session;
+
+    if(session){
+      view.role = "owner";
+      render();
+      await loadAdminData();
+      return;
+    }
+
+    var hashCode = (location.hash||"").replace("#","").trim().toUpperCase();
+    var savedCode = localStorage.getItem("mh_code");
+    var code = hashCode || savedCode;
+    if(code){
+      try{
+        var res = await sb.rpc("advisor_login", { p_code: code });
+        if(!res.error && res.data && res.data.length){
+          view.myCode = code; view.myAdvisor = res.data[0]; view.role = "advisor";
+          localStorage.setItem("mh_code", code);
+          render();
+          await loadAdvisorData();
+          return;
+        }
+      }catch(e){ /* fall through to gate */ }
+    }
+    view.role = "gate";
+    render();
+  }
+
+  sb.auth.onAuthStateChange(function(event, session){
+    if(event === "SIGNED_OUT"){
+      view.role = "gate"; render();
+    }
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>
