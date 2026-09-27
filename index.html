@@ -393,7 +393,7 @@
     var html = '<div class="section-title"><h3>יועצי משכנתאות</h3><button class="btn primary small" data-action="new-advisor" '+(view.saving?"disabled":"")+'>+ הוספת יועץ</button></div>';
     if(advisorsArr.length===0){ html += '<div class="row-empty">הוסף יועץ ותקבל עבורו קוד וקישור אישי לשליחה אליו.</div>'; return html; }
     advisorsArr.forEach(function(a){
-      var agreementTxt = a.agreement_type==="percent" ? (a.agreement_value||0)+"% מהפרמיה" : a.agreement_type==="fixed" ? fmtMoney(a.agreement_value||0)+" לעסקה" : "טרם הוגדר הסכם";
+      var agreementTxt = a.agreement_type==="percent" ? (a.agreement_value||0)+"% מהפרמיה החודשית" : a.agreement_type==="fixed" ? fmtMoney(a.agreement_value||0)+" לעסקה" : "טרם הוגדר הסכם";
       var bal = balanceOf(a.id);
       html += '<div class="advisor-row">' +
         '<div>' +
@@ -436,7 +436,7 @@
     var bal = balanceOf(p.id);
     var myLeads = appData.leads.slice().sort(function(a,b){ return (b.created_at||"").localeCompare(a.created_at||""); });
     var myLedger = appData.ledger.slice().sort(function(a,b){ return (b.date||b.created_at||"").localeCompare(a.date||a.created_at||""); });
-    var agreementTxt = p.agreement_type==="percent" ? (p.agreement_value||0)+"% מהפרמיה השנתית בעסקה סגורה" : p.agreement_type==="fixed" ? fmtMoney(p.agreement_value||0)+" לכל עסקה שנסגרת" : null;
+    var agreementTxt = p.agreement_type==="percent" ? (p.agreement_value||0)+"% מהפרמיה החודשית בעסקה סגורה" : p.agreement_type==="fixed" ? fmtMoney(p.agreement_value||0)+" לכל עסקה שנסגרת" : null;
 
     var html = "";
     if(p.active===false) html += '<div class="banner" style="margin-bottom:14px">ההסכם מולך עדיין ממתין לאישור הסוכן — אפשר כבר לשלוח לקוחות.</div>';
@@ -542,7 +542,7 @@
           '<div class="field"><label>יועץ מפנה</label><select name="advisorId">'+advisorOptions2+'</select></div>' +
           '<div class="field"><label>סטטוס</label><select name="status">'+statusOptions+'</select></div>' +
           '<div class="field"><label>הערה פנימית</label><textarea name="note">'+esc(l.note||"")+'</textarea></div>' +
-          '<div class="field" id="premium-field" hidden><label>פרמיה שנתית לחישוב עמלה (₪)</label><input type="number" name="premium" step="1"></div>' +
+          '<div class="field" id="premium-field" hidden><label>פרמיה חודשית לחישוב עמלה (₪)</label><input type="number" name="premium" step="1"></div>' +
           '<div class="btn-row" style="margin-top:6px"><button class="btn primary" type="submit">עדכון</button><button class="btn ghost" type="button" data-action="close-modal">ביטול</button></div>' +
         '</form>';
     }
