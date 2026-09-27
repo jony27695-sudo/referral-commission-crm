@@ -183,6 +183,13 @@
 (function(){
   "use strict";
 
+  // capture this BEFORE the supabase client has a chance to parse/strip the URL hash,
+  // so we know whether this page load is an invite/recovery link asking to set a password.
+  var authHashType = (function(){
+    var m = /[#&]type=(invite|recovery)/.exec(window.location.hash||"");
+    return m ? m[1] : null;
+  })();
+
   // ---------- Supabase config ----------
   var SUPABASE_URL = "https://omkcsxevtzuaeuzzrjky.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_q95js-bcXc_05X_xV5_1tQ_OhQIjXix";
@@ -241,7 +248,7 @@
   var appData = { advisors:[], leads:[], ledger:[] }; // advisors keyed by array of {id,code,name,...}
   var advisorsById = {};
   var view = {
-    role: null,        // "owner" | "advisor" | "gate" | "loading"
+    role: null,        // "owner" | "advisor" | "gate" | "loading" | "set-password"
     myCode: null,
     myAdvisor: null,   // advisor row for advisor session (from advisor_login)
     activeTab: sessionStorage.getItem("mh_tab") || "leads",
@@ -249,7 +256,8 @@
     saving: false,
     toast: null,
     gateError: null,
-    loginError: null
+    loginError: null,
+    setPasswordError: null
   };
 
   function balanceOf(advisorId){
@@ -280,6 +288,9 @@
     } else if(view.role === "loading"){
       who.innerHTML = '<span class="dot"></span><span>טוען…</span>';
       renderInto(root, '<div class="card"><div class="muted">טוען…</div></div>');
+    } else if(view.role === "set-password"){
+      who.innerHTML = '<span class="dot"></span><span>קביעת סיסמה</span>';
+      renderInto(root, renderSetPassword());
     } else {
       who.innerHTML = '<span class="dot"></span><span>אזור אישי</span>';
       renderInto(root, renderGate());
@@ -312,6 +323,21 @@
         '</form>' +
         (view.loginError ? '<div class="banner bad" style="margin-top:14px">'+esc(view.loginError)+'</div>' : '') +
       '</div>' +
+    '</div>';
+  }
+
+  // ================= SET PASSWORD (first login via invite/recovery link) =================
+  function renderSetPassword(){
+    return '<div class="gate-wrap">' +
+      '<div class="mark-lg">מ</div>' +
+      '<h3 style="margin-bottom:6px">קביעת סיסמה לכניסת סוכן</h3>' +
+      '<div class="muted" style="margin-bottom:18px">בחר סיסמה שתשתמש בה מעכשיו כדי להיכנס דרך "כניסת סוכן"</div>' +
+      '<form id="set-password-form">' +
+        '<div class="field"><input type="password" id="new-password" placeholder="סיסמה חדשה (לפחות 6 תווים)" autocomplete="new-password"></div>' +
+        '<div class="field"><input type="password" id="new-password-confirm" placeholder="אימות סיסמה" autocomplete="new-password"></div>' +
+        '<button class="btn primary" type="submit" style="width:100%">שמירת סיסמה וכניסה</button>' +
+      '</form>' +
+      (view.setPasswordError ? '<div class="banner bad" style="margin-top:14px">'+esc(view.setPasswordError)+'</div>' : '') +
     '</div>';
   }
 
@@ -778,6 +804,27 @@
         }
       });
     }
+    var setPwForm = document.getElementById("set-password-form");
+    if(setPwForm){
+      setPwForm.addEventListener("submit", async function(e){
+        e.preventDefault();
+        var pw = document.getElementById("new-password").value;
+        var pw2 = document.getElementById("new-password-confirm").value;
+        if(!pw || pw.length < 6){ view.setPasswordError = "הסיסמה חייבת להיות לפחות 6 תווים."; render(); return; }
+        if(pw !== pw2){ view.setPasswordError = "הסיסמאות לא תואמות."; render(); return; }
+        try{
+          var res = await sb.auth.updateUser({ password: pw });
+          if(res.error) throw res.error;
+          try{ history.replaceState(null, "", location.pathname + location.search); }catch(e2){}
+          view.setPasswordError = null; view.role = "owner";
+          render();
+          await loadAdminData();
+        }catch(err){
+          view.setPasswordError = "שמירת הסיסמה נכשלה: " + (err.message||err);
+          render();
+        }
+      });
+    }
   }
   function bind(action, fn){ var el = document.querySelector('[data-action="'+action+'"]'); if(el) el.addEventListener("click", fn); }
 
@@ -826,6 +873,11 @@
     var session = sessionRes.data && sessionRes.data.session;
 
     if(session){
+      if(authHashType === "invite" || authHashType === "recovery"){
+        view.role = "set-password";
+        render();
+        return;
+      }
       view.role = "owner";
       render();
       await loadAdminData();
